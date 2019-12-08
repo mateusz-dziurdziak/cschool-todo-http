@@ -7,15 +7,15 @@ import java.util.List;
 
 public class InMemoryTaskRepository implements TaskRepository {
 
-    private List<Task> tasks = new ArrayList<>();
+    private final List<Task> tasks = new ArrayList<>();
 
     @Override
     public List<Task> getAll() {
-        return tasks;
+        return new ArrayList<>(tasks);
     }
 
     @Override
-    public Task get(long id) {
+    public Task getById(long id) {
         for (Task task : tasks) {
             if (task.getId() == id) {
                 return task;

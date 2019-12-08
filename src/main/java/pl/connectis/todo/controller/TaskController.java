@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fi.iki.elonen.NanoHTTPD;
 import pl.connectis.todo.domain.Task;
-import pl.connectis.todo.repository.InMemoryTaskRepository;
 import pl.connectis.todo.repository.TaskRepository;
+import pl.connectis.todo.util.HttpConstants;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -16,12 +16,16 @@ import static fi.iki.elonen.NanoHTTPD.Response.Status.*;
 
 public class TaskController {
 
-    private final TaskRepository taskRepository = new InMemoryTaskRepository();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final TaskRepository taskRepository;
+
+    public TaskController(TaskRepository taskRepository) {
+        this.taskRepository = taskRepository;
+    }
 
     public NanoHTTPD.Response handleGetAll(NanoHTTPD.IHTTPSession session) {
         List<Task> tasks = taskRepository.getAll();
-
-        return asJson(tasks);
+        return asJsonResponse(OK, tasks);
     }
 
     public NanoHTTPD.Response handleGetSingle(NanoHTTPD.IHTTPSession session) {
@@ -29,11 +33,11 @@ public class TaskController {
         List<String> ids = parameters.getOrDefault("id", Collections.emptyList());
 
         if (ids.isEmpty()) {
-            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, "text/plain", "No `id` parameter");
+            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, HttpConstants.MIME_TYPE_TEXT_PLAIN, "No `id` parameter");
         }
 
         if (ids.size() > 1) {
-            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, "text/plain", "More than one `id` parameter");
+            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, HttpConstants.MIME_TYPE_TEXT_PLAIN, "More than one `id` parameter");
         }
 
         String id = ids.get(0);
@@ -42,20 +46,20 @@ public class TaskController {
         try {
             parsedId = Long.parseLong(id);
         } catch (NumberFormatException nfe) {
-            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, "text/plain", "Invalid `id`");
+            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, HttpConstants.MIME_TYPE_TEXT_PLAIN, "Invalid `id` parameter");
         }
 
-        Task task = taskRepository.get(parsedId);
+        Task task = taskRepository.getById(parsedId);
 
         if (task == null) {
-            return NanoHTTPD.newFixedLengthResponse(NOT_FOUND, "text/plain", "Task doesn't exist");
+            return NanoHTTPD.newFixedLengthResponse(NOT_FOUND, HttpConstants.MIME_TYPE_TEXT_PLAIN, "Task with given id doesn't exist");
         }
 
-        return asJson(task);
+        return asJsonResponse(OK, task);
     }
 
     public NanoHTTPD.Response handleAdd(NanoHTTPD.IHTTPSession session) {
-        String contentLength = session.getHeaders().get("content-length");
+        String contentLength = session.getHeaders().get(HttpConstants.HEADER_CONTENT_LENGTH);
         int contentLengthInt = Integer.parseInt(contentLength);
 
         byte[] buffer = new byte[contentLengthInt];
@@ -63,29 +67,28 @@ public class TaskController {
         Task task;
         try {
             session.getInputStream().read(buffer, 0, contentLengthInt);
-            ObjectMapper objectMapper = new ObjectMapper();
             task = objectMapper.readValue(buffer, Task.class);
         } catch (IOException e) {
-            e.printStackTrace();
-            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, "text/plain", "Bad request");
+            System.err.println("JSON deserialization of task object failed with message: " + e.getMessage());
+            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, HttpConstants.MIME_TYPE_TEXT_PLAIN, "Invalid body");
         }
 
-        task.setCompleted(false);
+        if (task.getName() == null) {
+            return NanoHTTPD.newFixedLengthResponse(BAD_REQUEST, HttpConstants.MIME_TYPE_TEXT_PLAIN, "Task `name` is required");
+        }
 
         Task savedTask = taskRepository.add(task);
-
-        return asJson(savedTask);
+        return asJsonResponse(CREATED, savedTask);
     }
 
-    private NanoHTTPD.Response asJson(Object value) {
-        ObjectMapper objectMapper = new ObjectMapper();
+    private NanoHTTPD.Response asJsonResponse(NanoHTTPD.Response.Status status, Object value) {
         String valueJson;
         try {
             valueJson = objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            e.printStackTrace();
-            return NanoHTTPD.newFixedLengthResponse(INTERNAL_ERROR, "text/plain", "Internal error");
+            System.err.println("Error during json serialization: " + e.getMessage());
+            return NanoHTTPD.newFixedLengthResponse(INTERNAL_ERROR, HttpConstants.MIME_TYPE_TEXT_PLAIN, "Internal error");
         }
-        return NanoHTTPD.newFixedLengthResponse(OK, "application/json", valueJson);
+        return NanoHTTPD.newFixedLengthResponse(status, HttpConstants.MIME_TYPE_APPLICATION_JSON, valueJson);
     }
 }

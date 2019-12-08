@@ -8,7 +8,7 @@ public interface TaskRepository {
 
     List<Task> getAll();
 
-    Task get(long id);
+    Task getById(long id);
 
     Task add(Task task);
 }

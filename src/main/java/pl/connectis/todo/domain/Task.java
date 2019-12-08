@@ -1,27 +1,31 @@
 package pl.connectis.todo.domain;
 
 public class Task {
-    private long id;
-    private boolean completed;
+    private Long id;
     private String name;
-    private int priority;
-    private String assigned;
     private String description;
+    private String assigned;
+    private int priority;
+    private boolean completed;
 
-    public long getId() {
+    public Task() {
+    }
+
+    public Task(Long id, String name, String description, String assigned, int priority, boolean completed) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.assigned = assigned;
+        this.priority = priority;
+        this.completed = completed;
+    }
+
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
-    }
-
-    public boolean isCompleted() {
-        return completed;
-    }
-
-    public void setCompleted(boolean completed) {
-        this.completed = completed;
     }
 
     public String getName() {
@@ -32,12 +36,12 @@ public class Task {
         this.name = name;
     }
 
-    public int getPriority() {
-        return priority;
+    public String getDescription() {
+        return description;
     }
 
-    public void setPriority(int priority) {
-        this.priority = priority;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getAssigned() {
@@ -48,11 +52,19 @@ public class Task {
         this.assigned = assigned;
     }
 
-    public String getDescription() {
-        return description;
+    public int getPriority() {
+        return priority;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
+
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
     }
 }
